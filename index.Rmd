@@ -11,13 +11,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## 1. Introduction
 
+Classification is a supervised machine learning process that predicts the class (or group) of input data based on the algorithms training data. Common classification algorithms include neural networks, support vector machine, naive Bayes, and decision trees.
+
 This mini project is all about trying out different ways to classify handwritten digits. It's a follow-up to a previous assignment at school where we looked at categorizing 28x28 pixel images into 10 different classes (0-9). The images are in greyscale, with values ranging from 0.0 (white) to 1.0 (black).
 
 A popular method for this kind of task is using a neural network with convolutional layers (to spot patterns) followed by fully connected layers and an output layer. The highest activation value from the output neurons (0-9) decides the final classification.
 
-Since the images are not that big (28x28), I'm also looking at both simple machine learning algorithms and neural networks for image classification.
+As the images are not big (28x28), flattening them results in a manageable number of columns (784). I'm also looking at both simple machine learning algorithms and neural networks for image classification. I'm going to experiment with Linear models (Simple Least Squares) with MASS, TreeDecision with RandomForest, and  Multinomial(Softmax) with nnet.
 
-I'm using the MNIST datasets for this project, which you can find [in bytes here](http://yann.lecun.com/exdb/mnist/) or [in cvs here](https://pjreddie.com/projects/mnist-in-csv/))
+I'm using the MNIST datasets for this project, which you can find [in bytes here](http://yann.lecun.com/exdb/mnist/) or [in cvs here](https://pjreddie.com/projects/mnist-in-csv/)).
 
 The training data has 60,000 images, which are handwritten samples from 250 people. The test data has 10,000 images, which are also handwritten samples from another group of 250 people.
 
@@ -77,9 +79,9 @@ for (i in 1:6) image(as.matrix(rev(as.data.frame(images_training_set[,
 ```
 
 ## 3. Exploring techniques to classify handwriten digits
-### 3.1. Simple Least Squares with MASS 
+### 3.1. Linear model with MASS 
 
-One of the most simple classifiers that we can create is based on least squares. We consider each image as a vector and obtain different least squares estimators for each type of digit. For digit $l \in 0, . . . , 9$ we collect all the training data vectors, with $y_i = l$. Then for each such $i$, we set $y_i = +1$ and for all other $i$ with $y_i \neq l$ , we set $y_i = −1$. This labels our data as classifying yes digit vs. not digit. Call this vector of -1 and +1 values $y^(l)$ for every digit `.
+One of the most simple classifiers that we can create is based on least squares to build a linear classifier. We consider each image as a vector and obtain different least squares estimators for each type of digit using one vs. rest approach. For digit $l \in 0, . . . , 9$ we collect all the training data vectors, with $y_i = l$. Then for each such $i$, we set $y_i = +1$ and for all other $i$ with $y_i \neq l$ , we set $y_i = −1$. This labels our data as classifying yes digit vs. not digit. Call this vector of -1 and +1 values $y^(l)$ for every digit `.
 We then compute,
 \[
 \beta^{(l)} = (X^TX)^{−1}X^Ty^{l} \quad for  \quad l = 0, . . . , 9
