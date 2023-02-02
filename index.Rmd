@@ -1,0 +1,185 @@
+---
+title: "Classification for MNIST dataset"
+author: "Hana Le"
+date: ""
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Introduction
+
+This mini project is all about trying out different ways to classify handwritten digits. It's a follow-up to a previous assignment at school where we looked at categorizing 28x28 pixel images into 10 different classes (0-9). The images are in greyscale, with values ranging from 0.0 (white) to 1.0 (black).
+
+A popular method for this kind of task is using a neural network with convolutional layers (to spot patterns) followed by fully connected layers and an output layer. The highest activation value from the output neurons (0-9) decides the final classification.
+
+Since the images are not that big (28x28), I'm also looking at both simple machine learning algorithms and neural networks for image classification.
+
+I'm using the MNIST datasets for this project, which you can find [in bytes here](http://yann.lecun.com/exdb/mnist/) or [in cvs here](https://pjreddie.com/projects/mnist-in-csv/))
+
+The training data has 60,000 images, which are handwritten samples from 250 people. The test data has 10,000 images, which are also handwritten samples from another group of 250 people.
+
+## 2. Preparing the data
+
+First, we need to download and decompress the following files. Their format is described on the website.
+
+- training set images (9912422 bytes)
+
+- training set labels (28881 bytes)
+
+- test set images (1648877 bytes)
+
+- test set labels (4542 bytes)
+
+
+```{r, echo = TRUE}
+# Read and create the data set
+file_training_set_image <- "Data_raw/train-images.idx3-ubyte"
+file_training_set_label <- "Data_raw/train-labels.idx1-ubyte"
+file_test_set_image <- "Data_raw/t10k-images.idx3-ubyte"
+file_test_set_label <- "Data_raw/t10k-labels.idx1-ubyte"
+
+extract_images <- function(file, nbimages = NULL) {
+  if (is.null(nbimages)) {
+    nbimages <- as.numeric(paste("0x", paste(readBin(file, "raw", n = 8)[5:8], collapse = ""), sep = ""))
+  }
+  nbrows <- as.numeric(paste("0x", paste(readBin(file, "raw", n =12)[9:12], collapse = ""), sep = ""))
+  nbcols <- as.numeric(paste("0x", paste(readBin(file, "raw", n =16)[13:16], collapse = ""), sep = "")) 
+  raw <- readBin(file, "raw", n = nbimages * nbrows * nbcols + 16)[-(1:16)]
+  return(array(as.numeric(paste("0x", raw, sep = "")), dim = c(nbcols,nbrows,nbimages)))
+}
+
+extract_labels <- function(file) {
+  nbitem <- as.numeric(paste("0x", paste(readBin(file, "raw", n = 8)[5:8], collapse = ""), sep = ""))
+  raw <- readBin(file, "raw", n = nbitem + 8)[-(1:8)]
+  return(as.numeric(paste("0x", raw, sep = "")))
+}
+
+```
+
+```{r, results='hide'}
+# Extract the information from these files.
+images_training_set <- extract_images(file_training_set_image,60000)
+images_test_set <- extract_images(file_test_set_image,10000)
+labels_training_set <- extract_labels(file_training_set_label)
+labels_test_set <- extract_labels(file_test_set_label)
+table(labels_training_set)
+```
+
+
+```{r}
+# See examples in the training set
+par(mfrow = c(2, 3))
+for (i in 1:6) image(as.matrix(rev(as.data.frame(images_training_set[,
+, i]))), col = gray((255:0)/256))
+```
+
+## 3. Exploring techniques to classify handwriten digits
+### 3.1. Simple Least Squares with MASS 
+
+One of the most simple classifiers that we can create is based on least squares. We consider each image as a vector and obtain different least squares estimators for each type of digit. For digit $l \in 0, . . . , 9$ we collect all the training data vectors, with $y_i = l$. Then for each such $i$, we set $y_i = +1$ and for all other $i$ with $y_i \neq l$ , we set $y_i = −1$. This labels our data as classifying yes digit vs. not digit. Call this vector of -1 and +1 values $y^(l)$ for every digit `.
+We then compute,
+\[
+\beta^{(l)} = (X^TX)^{−1}X^Ty^{l} \quad for  \quad l = 0, . . . , 9
+\]
+
+where X is the 60, 000 × 784 design matrix associated with the 60, 000 images.
+Now for every image i, the inner product $\beta^{(l)}.x_i$ yields an estimate of how likely this image is of the digit $l$. A very high value indicated a high likelihood and a low value is a low likelihood. We then classify an arbitrary image $\tilde{x}$ by selecting:
+\[
+\hat{y}(\tilde{x}) = \text{arg max} \beta^{(l)}. \tilde{x}
+\]
+
+#### Create design matrix and outcome reponse (i.e flatten training and testing data)
+
+```{r, results='hide'}
+vectorized_result <- function (j) {
+  e <- as.matrix(rep(0,10))
+  rownames(e) <- 0:9
+  e[j+1] <- 1
+  return(e)
+}
+
+X_train <-t(sapply(1:60000, function(x) c(images_training_set[,,x])/256)); 
+Y_train <-t(sapply(1:60000, function(x) vectorized_result(labels_training_set[x])))
+
+Y_train[Y_train == 0] <- -1
+X_test <- t(sapply(1: 10000, function(x) c(images_test_set[ , , x])/256))
+Y_test <- t(sapply(1: 10000, function(x) vectorized_result(labels_test_set[x])))
+
+```
+
+
+#### Using ginv() from MASS R package for this linear classifier
+
+
+```{r, results='hide'}
+# Compute the key element $(X^{T}X)^{-1}X^{T}$ and $\beta$
+library(MASS)
+mat <- ginv(X_train) 
+beta <- sapply(1:10, function(x) mat %*% Y_train[, x])
+colnames(beta) <- 0:9
+
+```
+
+
+```{r, results='hide'}
+# Prediction
+pred_vals <- apply(X_test%*%beta, 1, which.max) - 1
+head(pred_vals)
+```
+
+#### Performance evaluation 
+
+```{r}
+# Accuracy 
+table(pred_vals == labels_test_set)/10000
+table(pred_vals, labels_test_set)
+```
+
+Overall, the accuracy of 85.3% is quite ok, however, there may be other way better.
+
+```{r, message=FALSE}
+library(dplyr)
+# Let's see which digits are easier to classify than other.
+err <- caret::confusionMatrix(factor(pred_vals),factor(labels_test_set))
+err_df <- as.data.frame(err$byClass)
+err_df %>% select("Sensitivity", "Specificity", "Precision")
+```
+
+As we can see the Precision for class 0 and class 2 are highest, and class 8 and 9 are lowest. If we check the Sensitivity, it seems 1 and 0 to be easiest to classify while it is harder for 5 and 8. That makes sense.
+
+### 3.2. RandomForest
+
+Random Forest is an ensemble learning method for classification and regression problems. In the case of the MNIST dataset, the Random Forest algorithm uses decision trees to make predictions about the class (digit) of each hand-written image. The algorithm trains multiple decision trees on randomly selected subsets of the training data and makes predictions by taking a majority vote (for classification problems) among the predictions of individual trees. The final prediction is the class that is predicted by the majority of trees in the forest.
+
+
+```{r}
+# Prepare data that is suitable for use with a Random
+labels_training_set <- as.factor(labels_training_set)
+labels_test_set <- as.factor(labels_test_set)
+test_set <- cbind(labels_test_set,X_test)
+train_set <- cbind(labels_training_set, X_train)
+```
+
+#### Model training
+
+```{r, message=FALSE}
+library(randomForest)
+model_rf <- randomForest(x = train_set, y = labels_training_set, xtest = test_set, ntree = 50)
+```
+
+#### Performance evaluation
+
+```{r}
+# Accuracy  and confusion matrix
+1-mean(model_rf$err.rate)
+model_rf
+```
+
+The overall accuracy of approximately 95% is pretty impressive for a Random Forest. If we take a closer look at the class error, it looks a lot like the Simple Least Squares classifier. It seems that 1 and 0 are the easiest to classify, but 5 and 8 are a bit more tricky.
+
+### 3.3. Softmax with nnet
+
+## 4. Conclusion
