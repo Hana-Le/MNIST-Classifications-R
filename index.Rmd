@@ -79,7 +79,7 @@ for (i in 1:6) image(as.matrix(rev(as.data.frame(images_training_set[,
 ```
 
 ## 3. Exploring techniques to classify handwriten digits
-### 3.1. Linear model with MASS 
+### 3.1. Linear classifier 
 
 One of the most simple classifiers that we can create is based on least squares to build a linear classifier. We consider each image as a vector and obtain different least squares estimators for each type of digit using one vs. rest approach. For digit $l \in 0, . . . , 9$ we collect all the training data vectors, with $y_i = l$. Then for each such $i$, we set $y_i = +1$ and for all other $i$ with $y_i \neq l$ , we set $y_i = −1$. This labels our data as classifying yes digit vs. not digit. Call this vector of -1 and +1 values $y^(l)$ for every digit `.
 We then compute,
@@ -140,7 +140,7 @@ table(pred_vals == labels_test_set)/10000
 table(pred_vals, labels_test_set)
 ```
 
-Overall, the accuracy of 85.3% is quite ok, however, there may be other way better.
+Overall, the accuracy of 85.3% is ok, however, there may be other ways better.
 
 ```{r, message=FALSE}
 library(dplyr)
@@ -152,9 +152,9 @@ err_df %>% select("Sensitivity", "Specificity", "Precision")
 
 As we can see the Precision for class 0 and class 2 are highest, and class 8 and 9 are lowest. If we check the Sensitivity, it seems 1 and 0 to be easiest to classify while it is harder for 5 and 8. That makes sense.
 
-### 3.2. RandomForest
+### 3.2. RandomForest Classifier
 
-Random Forest is an ensemble learning method for classification and regression problems. In the case of the MNIST dataset, the Random Forest algorithm uses decision trees to make predictions about the class (digit) of each hand-written image. The algorithm trains multiple decision trees on randomly selected subsets of the training data and makes predictions by taking a majority vote (for classification problems) among the predictions of individual trees. The final prediction is the class that is predicted by the majority of trees in the forest.
+Random Forest is an ensemble learning method for classification and regression problems. In the case of the MNIST dataset, the Random Forest algorithm uses a set of individual decision trees to make predictions about the class (digit) of each hand-written image. The algorithm trains multiple decision trees on randomly selected subsets of the training data and makes predictions by taking a majority vote (for classification problems) among the predictions of individual trees. The final prediction is the class that is predicted by the majority of trees in the forest.
 
 
 ```{r}
@@ -180,8 +180,10 @@ model_rf <- randomForest(x = train_set, y = labels_training_set, xtest = test_se
 model_rf
 ```
 
-The overall accuracy of approximately 95% is pretty impressive for a Random Forest. If we take a closer look at the class error, it looks a lot like the Simple Least Squares classifier. It seems that 1 and 0 are the easiest to classify, but 5 and 8 are a bit more tricky.
+The overall accuracy of approximately 95% is pretty impressive for a Random Forest classifier. If we take a closer look at the class error, it looks like the Linear classifier. It seems that 1 and 0 are the easiest to classify, but 5 and 8 are a bit more tricky.
 
-### 3.3. Softmax with nnet
+### 3.3. Softmax classifier
+
+I got issues in installing Tensorflow and MXNet in R. Will finish this part once I fix it.
 
 ## 4. Conclusion
